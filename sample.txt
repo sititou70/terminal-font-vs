@@ -1,1 +1,12 @@
-日本語
+harf width: 0123abcd!"#$%&'()~=ｶﾀｶﾅ
+full width: ひらがなカタカナ漢字０１２３ａｂｃｄＡＢＣＤ！”＃＄％＆’（）〜＝　←空白
+
+┏━━┳━━┳━━┓
+┃face┃hand┃tada┃
+┣━━╋━━╋━━┫
+│ 😀 │ 👋 │ 🎉 │
+└──┴──┴──┘
+
+#include <std.io>
+for (int i = 0; i < array.length; i++) {}
+string = "Output", number = 10

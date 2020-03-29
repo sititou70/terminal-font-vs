@@ -35,32 +35,47 @@ const sleep = (ms: number): Promise<void> =>
 const getTargetFontFamilies = async (): Promise<string[]> => {
   const font_files = fs
     .readdirSync(FONTS_DIR)
-    .filter(x => x.indexOf('.ttf') !== -1);
+    .filter(x => x.indexOf('.ttf') !== -1 || x.indexOf('.ttc') !== -1);
 
-  const scan_promises = font_files.map(x =>
-    execSync(`fc-scan -f %{family[0]} "${path.join(FONTS_DIR, x)}"`)
+  const scan_results = font_files.map(x =>
+    execSync(`fc-scan "${path.join(FONTS_DIR, x)}"`).toString()
   );
-  await Promise.all(scan_promises);
-  return Array.from(new Set(scan_promises.map(x => x.toString())));
+
+  return Array.from(
+    new Set(
+      scan_results
+        .map(x => x.match(/family: "(.+?)"/))
+        .filter((x): x is RegExpMatchArray => x !== null)
+        .map(x => x[1])
+    )
+  );
 };
 
 const terminatorScreenshot = async (
   config: TerminatorConfig,
   filename: string
 ): Promise<void> => {
+  execSync(`./refresh_sample_screen.sh`);
   fs.writeFileSync(TERMINATOR_TEMP_CONFIG, config.config);
 
   const res = exec(
     `terminator -f --config ${TERMINATOR_TEMP_CONFIG} -pdefault -e '/bin/bash -c \"tmux a -t ${SAMPLE_SCREEN_SESSION_NAME}\"'`
   );
-  await sleep(1000);
+  await sleep(1500);
   execSync(`gnome-screenshot -f ${path.join(SCREENSHOT_DIR, filename)}`);
 
-  execSync("ps aux | grep terminator | grep -v grep | cut -d ' ' -f 2")
+  const kill_target_pids = execSync(
+    "ps aux | grep terminator | grep -v grep | cut -d ' ' -f 2"
+  )
     .toString()
     .split('\n')
     .filter(x => x !== '')
-    .map(x => process.kill(parseInt(x)));
+    .map(x => parseInt(x));
+
+  console.log('killing terminator processes', kill_target_pids);
+  kill_target_pids.forEach(x => process.kill(x));
+
+  await sleep(1000);
 };
 
 const main = async () => {
@@ -77,6 +92,19 @@ const main = async () => {
     await terminatorScreenshot(
       terminator_base_config.set('font', `${font_family} ${FONT_SIZE}`),
       `${font_family}.png`
+    );
+  }
+
+  //cjk width
+  for (const font_family of target_font_families) {
+    await terminatorScreenshot(
+      terminator_base_config
+        .set(
+          'enabled_plugins',
+          `LaunchpadCodeURLHandler, APTURLHandler, CjkWidthWide, LaunchpadBugURLHandler`
+        )
+        .set('font', `${font_family} ${FONT_SIZE}`),
+      `cjk-${font_family}.png`
     );
   }
 };
